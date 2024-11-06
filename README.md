@@ -15,5 +15,5 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - We first need to partition/split the image into patches say 16 by 16 pixels.
   - We apply convolution operations on the patches to get a shared represention.
   - We flatten the patches to have one vector (1LP?) and the we concat them.
-  - We add positionnal information to give a signal about the order.
+  - We add learned(-ed+able) positionnal information to give a signal about the order.
  
