@@ -14,6 +14,6 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 - What are the steps that an image goes in order to be encoded in a vision transformer? :
   - We first need to partition/split the image into patches say 16 by 16 pixels.
   - We apply convolution operations on the patches to get a shared represention.
-  - We flatter the patches to have one vector (concat).
+  - We flatten the patches to have one vector (1LP?) and the we concat them.
   - We add positionnal information to give a signal about the order.
  
