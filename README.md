@@ -19,3 +19,7 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - We add learned(-ed+able) positionnal information to give a signal about the order.
 - Why do we have a config file for the model? :
   - PaliGemma comes in different sizes.
+- Why do we use `register_buffer`?
+  - The tensors get moved to the device when the model does.
+  - The are not included in model.parameters (is even better than setting param.`requires_grad` to `False`, because the optimzer doesn't iter over them! flipping cool!)
+  - It can also be included in the state_dict, except if `persistent` is set to `False`.
