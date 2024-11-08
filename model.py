@@ -42,6 +42,12 @@ class SiglipVisionEmbedding(nn.Module):
             padding='valid' # no padding
         )
         self.position_embeddings = nn.Embedding(self.num_patches, config.hidden_size)
+
+        self.register_buffer(
+            "position_ids",
+            torch.arange(self.num_patches).expand((1, -1)),
+            persistent=False
+            )
     
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         # (batch_size, num_channels, height, width) -> (batch_size, hidden_size, num_patches)
