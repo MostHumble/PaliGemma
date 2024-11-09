@@ -51,8 +51,7 @@ class SiglipVisionEmbedding(nn.Module):
             )
     
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-
-        _, _, height, width = images.shape # batch_size, num_channels, height, width
+        #image of shape: batch_size, num_channels, height, width
         embeddings = self.make_patch_embeddings(images) # batch, embed_dim, num_patches_h, num_patches_w
         embeddings = embeddings.flatten(2) # batch, embed_dim, num_patches
         embeddings = embeddings.transpose(1, 2) # batch, num_patches, embed_dim
