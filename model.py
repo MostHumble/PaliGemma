@@ -34,26 +34,28 @@ class SiglipVisionEmbedding(nn.Module):
         super().__init__()
         self.config = config
         self.num_patches = (config.image_size // config.patch_size) ** 2
-        self.patch_embeddings = nn.Conv2d(
+        self.make_patch_embeddings = nn.Conv2d(
             in_channels=config.num_channels, # RGB
-            out_channels=config.hidden_size, 
+            out_channels=config.hidden_size, # embed_dim
             kernel_size=config.patch_size,  # 16x16 patches
             stride=config.patch_size, # non-overlapping patches
             padding='valid' # no padding
         )
-        self.position_embeddings = nn.Embedding(self.num_patches, config.hidden_size)
+        self.positionnal_embeddings = nn.Embedding(self.num_patches, config.hidden_size)
 
         self.register_buffer(
             "position_ids",
-            torch.arange(self.num_patches).expand((1, -1)),
+            torch.arange(self.num_patches).unsqueeze(0), # 1, num_patches
             persistent=False
             )
     
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        # (batch_size, num_channels, height, width) -> (batch_size, hidden_size, num_patches)
-        x = self.patch_embeddings(images).flatten(2).transpose(1, 2)
-        x = torch.cat([self.position_embeddings, x], dim=1)
-        return x
+        
+        _, _, height, width = images.shape # batch_size, num_channels, height, width
+        embeddings = self.make_patch_embeddings(images) # batch, embed_dim, num_patches_h, num_patches_w
+        embeddings = embeddings.flatten(2) # batch, embed_dim, num_patches
+        embeddings = embeddings.transpose(1, 2) # batch, num_patches, embed_dim
+        embeddings = embeddings + self.positionnal_embeddings(self.position_ids) # batch, num_patches, embed_dim
 
 
 class SiglipVisionTransformer(nn.Module):
