@@ -23,3 +23,5 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - The tensors get moved to the device when the model does.
   - The are not included in model.parameters (is even better than setting param.`requires_grad` to `False`, because the optimzer doesn't iter over them! flipping cool!)
   - It can also be included in the state_dict, except if `persistent` is set to `False`.
+- Why do we need positionnal embeddings?
+  - It relates to how the positionnal information is lost because the attention scores (from att mech) are invarient to the positions, thus we need a signal to fix this. (note: RNNs like model do not have this problem)
