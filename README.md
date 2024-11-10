@@ -26,7 +26,7 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 - Why do we need positionnal embeddings?
   - It relates to how the positionnal information is lost because the attention scores (from att mech) are invarient to the positions, thus we need a signal to fix this. (note: RNNs like model do not have this problem)
 - What is internal coavariate shift?
-  - I understand it as follows: during training the input statistics of a batch (mean, var) can change drastically (ex: pics of a desert vs of a sea), this leads to a drastic change in the activations, thus the gradient with vary a lot thus the loss too, hence the gradients too, this seems not to be good proprety for learning.
+  - I understand it as follows: during training the input statistics of a batch (mean, var) can change drastically (ex: pics of a desert vs of a sea), this leads to a drastic change in the activations, thus the gradient will vary a lot thus the loss too, hence the gradients too, this seems not to be good proprety for learning.
 - How does batch norm work? and how does it attempt to fix? what are its limitations?
   - It work by tracking the statistics at the batch level (bsz, hidden_dim -> 1, hidden_dim).
   - By tracking these metrics (mean, var) we can keep a normal distrubtion of the batch activations, and thus have stable gradients
