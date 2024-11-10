@@ -28,8 +28,8 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 - What is internal coavariate shift?
   - I understand it as follows: during training the input statistics of a batch (mean, var) can change drastically (ex: pics of a desert vs of a sea), this leads to a drastic change in the activations, thus the gradient with vary a lot thus the loss too, hence the gradients too, this seems not to be good proprety for learning.
 - How does batch norm work? and how does it attempt to fix? what are its limitations?
-  - It work by tracking the statistics at the batch level (dim=0).
-  - By tracking these metrics (mean, var) we can keep a normal distrubtion of the batch, and thus stable gradients
-  - The limitations have to do with batch size, it works better with a bigger batch size, because the statistics are more reliable, and vary less
+  - It work by tracking the statistics at the batch level (bsz, hidden_dim -> 1, hidden_dim).
+  - By tracking these metrics (mean, var) we can keep a normal distrubtion of the batch activations, and thus have stable gradients
+  - The limitations have to do with batch size, it works better with a bigger batch size, because the statistics are more representative.
 - How does layer norm avoid the falls of batch norm?
   - It does so by calculating the stats at the input level (bsz, hidden_dim -> bsz, 1), it's thus independent of the batch size
