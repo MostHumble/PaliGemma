@@ -33,3 +33,7 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - The limitations have to do with batch size, it works better with a bigger batch size, because the statistics are more representative.
 - How does layer norm avoid the falls of batch norm?
   - It does so by calculating the stats at the input level (bsz, hidden_dim -> bsz, 1), it's thus independent of the batch size
+- How does applying a Linear layer differ from attention?
+  - Linear layear work on feature level, and do not exchange information between hidden states (the goal is the extend the feature space to an intermediate state, apply a non linearity and and apply some transformation in that expanded space while going to the inital input state)
+- Why is the GeLu used rather than ReLu?
+  - A major problem when using ReLu is that when the inputs are smaller than 0, they get flattened out thus loosing some of the information (gradient is 0), GeLu smooths that part (some kind of fancy Leaky ReLu)
