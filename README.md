@@ -34,8 +34,13 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 - How does layer norm avoid the falls of batch norm?
   - It does so by calculating the stats at the input level (bsz, hidden_dim -> bsz, 1), it's thus independent of the batch size
 - How does applying a Linear layer differ from attention?
-  - Linear layear work on feature level, and do not exchange information between hidden states (the goal is the extend the feature space to an intermediate state, apply a non linearity and and apply some transformation in that expanded space while going to the inital input state)
+  - Linear layear work on feature level, and do not exchange information between hidden states (the goal is the extend the feature space to an intermediate state, apply a non linearity and and apply some transformation in that expanded space while going to the inital input state).
 - Why is the GeLu used rather than ReLu?
-  - A major problem when using ReLu is that when the inputs are smaller than 0, they get flattened out thus loosing some of the information (gradient is 0), GeLu smooths that part (some kind of fancy Leaky ReLu)
+  - A major problem when using ReLu is that when the inputs are smaller than 0, they get flattened out thus losing some of the information (gradient is 0), GeLu smooths that part (some kind of fancy Leaky ReLu)
 - What's the point of using the multihead attention?
-  - The idea comes from the fact that word (tokens) can have multiple meanining, we thus want to facilitate having platera by allowing local interaction (ex: Q:[seq_len:4, head:1, head_dim:128] allows only interactactions withing the first 128 dims of each tokens (when multiplied with K.T))
+  - The idea comes from the fact that word (tokens) can have multiple meanining, we thus want to facilitate having platera by allowing local interaction (ex: Q:[seq_len:4, head:1, head_dim:128] allows only interactactions withing the first 128 dims of each tokens (when multiplied with K.T)).
+  - It's also a great way to parallelize the computations, as each head is indpendent of the others.
+- Why do we need to use `.contiguous` after the `transpose`?
+  - Because the memory layout remains the same, but the values in each dim are not contiguous when we apply the transpose, and using `view` requires the layout to be contigous (follow row major style of Pytorch), `.contiguous`  recreates a tensor with a contiguous memory which values follow that of the transpose.
+- What's the point of Multiplying by W_O after calculating `Concat(Softmax(Q*K.T/sqrt(hidden_dim))*V, dim=-1)`?
+  - The goal is to enable the exchange of informations between the heads (some kind of mixing layer).
