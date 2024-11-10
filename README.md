@@ -31,3 +31,5 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - It work by tracking the statistics at the batch level (dim=0).
   - By tracking these metrics (mean, var) we can keep a normal distrubtion of the batch, and thus stable gradients
   - The limitations have to do with batch size, it works better with a bigger batch size, because the statistics are more reliable, and vary less
+- How does layer norm avoid the falls of batch norm?
+  - It does so by calculating the stats at the input level (bsz, hidden_dim -> bsz, 1), it's thus independent of the batch size
