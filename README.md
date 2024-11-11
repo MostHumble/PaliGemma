@@ -4,6 +4,8 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 
 ## Notes
 
+### Vision Encoder model
+
 - Why do we use contrastive learning when training VMs? :
   - Because we not only want our model to learn good representations for the images/text, but also to have it learn some mutual representation between the two.
   - There's also the fact of data availibility (so many pairs of images that have text asociated with them).
@@ -44,3 +46,6 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - Because the memory layout remains the same, but the values in each dim are not contiguous when we apply the transpose, and using `view` requires the layout to be contigous (follow row major style of Pytorch), `.contiguous`  recreates a tensor with a contiguous memory which values follow that of the transpose.
 - What's the point of Multiplying by W_O after calculating `Concat(Softmax(Q*K.T/sqrt(hidden_dim))*V, dim=-1)`?
   - The goal is to enable the exchange of informations between the heads (some kind of mixing layer).
+
+### Processor
+- 
