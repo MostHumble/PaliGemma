@@ -49,7 +49,11 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 
 ### Processor
 
-- What are the <loc[value]> about ?
+- What are the <loc[value]> tokens about ?
   - They are used to predict a bounding box for an object (i.e 4 tokens are predicted for each object (y_min, x_min, y_max, x_max)), it's trigered by a prompt of the following structure: dectect [object].
 - How do we get the actual position ?
   - the value is in range(1024): We need to first devide the numbers by 1024, then multiply by height/width to get x/y.
+- What are the <seg[value]> tokens about ?
+  - They are use as base to reconstruct a segmentation mask.
+- What's the idea behind it?
+  - The sequence consists of 16 tokens of these kind, they are used as codebook, to identify a mask, these are fed to Vector-Quantized VAE, which handles the reconstructions [check out the code here](https://huggingface.co/spaces/big-vision/paligemma/blob/main/paligemma_parse.py)
