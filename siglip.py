@@ -96,14 +96,16 @@ class SiglipVisionEncoderLayer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # shapes: batch_size, num_patches, embed_dim
+        residual = x
         # apply first layerNorm (pre-LN)
-        output = self.layerNorm1(x)
+        x = self.layerNorm1(x)
         # use attention mechanism, and add residual stream
-        x = self.attn(output) + x
+        x = self.attn(x) + residual
+        residual = x
         # apply second layerNorm
-        output = self.layerNorm2(x)
+        x = self.layerNorm2(x)
         # apply linear layer and add residual stream
-        output = self.mlp(output) + x
+        x = self.mlp(x) + residual
         return x
 
 
