@@ -1,10 +1,34 @@
-from typing import Any, List
+from typing import Any, List, Union, Optional
 import numpy as np
 from PIL import Image
 import torch
 
 IMAGENET_MN = [0.5, 0.5, 0.5]
 IMAGENET_STD = [0.5, 0.5, 0.5]
+
+def process_images(
+        images: List[Image, Image],
+        size: int = None,
+        resample: Image.Resampling = None,
+        rescale_factor: float = None,
+        image_mean : Optional[Union[float, List[float]]] = None,
+        image_std : Optional[Union[float, List[float]]] = None,
+
+) -> List[np.ndarry]:
+    h, w = size, size
+    # resize, rescale, and normalize
+    images = [
+        resize(image=image, size=(h,w), resample=resample) for image in images
+    ]
+    images = [np.array(image) for image in images]
+
+    images = [rescale(image) for image in images]
+
+    images = [normalize(image) for image in images]
+
+    images = [image.transpose(2, 0, 1) for image in images]
+
+    return images
 
 class PaliGemmaProcessor:
     def __init__(self, tokenizer, num_image_tokens: int, image_size:int):
