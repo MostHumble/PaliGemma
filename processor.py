@@ -1,3 +1,4 @@
+from typing import Any, List
 import numpy as np
 from PIL import Image
 import torch
@@ -27,5 +28,46 @@ class PaliGemmaProcessor:
 
         tokenizer.add_bos_token = False
         tokenizer.add_eos_token = False
+
         self.tokenizer = tokenizer
+        
+    def __call__(self,
+                 text: List[str],
+                 images: List[Image, Image],
+                 padding: str = "longest",
+                 truncation : bool = True,
+    ) -> dict :
+        
+        assert len(images) == 1 and len(text) == 1, f'only accepts 1 image and 1 text at a time'
+
+        pixel_values = process_images(
+            images,
+            size=(self.image_size, self.image_size),
+            rescale_factor = 1/255.0,
+            image_mean = IMAGENET_MN,
+            image_std = IMAGENET_STD 
+        )
+        # bs, c, h, w
+        pixel_values = np.stack(pixel_values, axis=0)
+        pixel_values = torch.tensor(pixel_values)
+
+        input_strings = [
+            add_image_tokens_to_prompt(
+                prefix_prompt=prompt,
+                bos_token=self.tokenizer.bos_token,
+                image_seq_len=self.image_seq_lenght,
+                image_tokens=self.IMAGE_TOKEN) 
+                for prompt in text
+            ]
+
+        inputs = self.tokenizer(
+            input_strings,
+            return_tensors="pt",
+            padding=padding,
+            truncation=truncation
+        )
+
+        return_data = {"pixel_values": pixel_values, **inputs}
+
+        return return_data
         
