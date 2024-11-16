@@ -6,6 +6,17 @@ import torch
 IMAGENET_MN = [0.5, 0.5, 0.5]
 IMAGENET_STD = [0.5, 0.5, 0.5]
 
+def scale_normalize(
+        image,
+        means,
+        stds,
+        scale):
+    means = np.array(means, dtype=image.dtype)
+    stds = np.array(stds, dtype=image.dtype)
+    scale = np.array(scale, dtype=image.dtype)
+
+    return (scale*image-means)/stds
+
 def process_images(
         images: List[Image, Image],
         size: int = None,
@@ -18,13 +29,11 @@ def process_images(
     h, w = size, size
     # resize, rescale, and normalize
     images = [
-        resize(image=image, size=(h,w), resample=resample) for image in images
+        image.resize(size=(h,w), resample=resample) for image in images
     ]
     images = [np.array(image) for image in images]
 
-    images = [rescale(image) for image in images]
-
-    images = [normalize(image) for image in images]
+    images = [scale_normalize(image, image_mean, image_std, rescale_factor) for image in images]
 
     images = [image.transpose(2, 0, 1) for image in images]
 
