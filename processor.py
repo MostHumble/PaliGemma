@@ -18,7 +18,7 @@ def scale_normalize(
     return (scale*image-means)/stds
 
 def process_images(
-        images: List[Image, Image],
+        images: List[Image.Image],
         size: int = None,
         resample: Image.Resampling = None,
         rescale_factor: float = None,
@@ -42,7 +42,7 @@ def process_images(
 class PaliGemmaProcessor:
 
     IMAGE_TOKEN = "<image>"
-    
+
     def __init__(self, tokenizer, num_image_tokens: int, image_size:int):
 
         self.image_seq_lenght = num_image_tokens
@@ -69,7 +69,7 @@ class PaliGemmaProcessor:
         
     def __call__(self,
                  text: List[str],
-                 images: List[Image, Image],
+                 images: List[Image.Image],
                  padding: str = "longest",
                  truncation : bool = True,
     ) -> dict :
