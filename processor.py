@@ -40,6 +40,9 @@ def process_images(
     return images
 
 class PaliGemmaProcessor:
+
+    IMAGE_TOKEN = "<image>"
+    
     def __init__(self, tokenizer, num_image_tokens: int, image_size:int):
 
         self.image_seq_lenght = num_image_tokens
