@@ -17,6 +17,14 @@ def scale_normalize(
 
     return (scale*image-means)/stds
 
+def add_image_tokens_to_prompt(
+        prefix_prompt,
+        bos_token,
+        image_seq_len,
+        image_tokens
+        ):
+    return f"{image_tokens*image_seq_len}{bos_token}{prefix_prompt}\n"
+
 def process_images(
         images: List[Image.Image],
         size: int = None,
