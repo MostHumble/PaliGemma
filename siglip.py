@@ -140,7 +140,7 @@ class SiglipVisionTransformer(nn.Module):
         return x
 
 
-class SiglipVision(nn.Module):
+class SiglipVisionModel(nn.Module):
     def __init__(self, config: SiglipVisionConfig):
         super().__init__()
         self.config = config
