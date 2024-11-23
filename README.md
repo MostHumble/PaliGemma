@@ -68,4 +68,5 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 - In the KV cache, what are the two phases and are their objectives?
   - A prefill phase, where we generate the Keys and Values of the images + prompt
   - A Generation phase, we we add one key and one query at a time.
- 
+- Explain what's the point of this line `kv_len = kv_cache.num_items() + q_len` ?
+  - The idea is to increment the dim by 1, so we can use this value for generating the causal mask.
