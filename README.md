@@ -70,3 +70,9 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - A Generation phase, we we add one key and one query at a time.
 - Explain what's the point of this line `kv_len = kv_cache.num_items() + q_len` ?
   - The idea is to increment the dim by 1, so we can use this value for generating the causal mask.
+- Why is there Full Attention between the prefix and images?
+  - according to the article: The motivation is that it allows more tokens to actively participate in the “thinking” process from the start
+
+![alt text](image.png)
+
+The blue is for the scores on downstream task we get from following the proposed approache, other are experiments with ARegressivness on different levels
