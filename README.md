@@ -65,3 +65,7 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - `IMAGE_TOKEN`s,`<bos>`,`<prompt>` and finnaly `\n`
 - Why do we use `\n`?
   - It's used and eos token, because it's not included in the prefix sequences.
+- In the KV cache, what are the two phases and are their objectives?
+  - A prefill phase, where we generate the Keys and Values of the images + prompt
+  - A Generation phase, we we add one key and one query at a time.
+ 
