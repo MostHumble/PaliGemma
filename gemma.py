@@ -71,7 +71,16 @@ class PaliGemmaConfig():
         self.text_config.num_image_tokens = (self.vision_config.image_size // self.vision_config.patch_size) ** 2
         self.vision_config.projection_dim = projection_dim
          
+class PaliGemmaMultiModalProjector(nn.Module):
+    def __init__(self, config: PaliGemmaConfig):
+        super().__init__()
+        self.linear = nn.Linear(config.vision_config.hidden_size, config.vision_config.projection_dim, bias=True)
 
+    def forward(self, image_features):
+        # bs, num_patches, embed_dim -> batch_Size, num_patches, projection_dim
+        hidden_states = self.linear(image_features)
+        return hidden_states
+    
 class PaliGemmaForConditonnalGeneration(nn.Module):
     def __init__(self, config: PaliGemmaConfig):
         super().__init__()
@@ -103,6 +112,42 @@ class PaliGemmaForConditonnalGeneration(nn.Module):
         # placeholder for the embeddings
         final_embedding = torch.cat([scaled_image_features, input_embeds[:,scaled_image_features.size(1):]], dim=1)
         
+        # masking
+
+        dtype, device = input_embeds.dtype, input_embeds.device
+        min_dtype = torch.finfo(dtype).min
+        q_len = input_embeds.shape[1]
+    
+        # prefill phase
+        if kv_cache is None or kv_cache.num_items() == 0:
+            causal_mask = torch.full(
+                (bs, q_len, q_len), fill_value=0, dtype=dtype, device=device
+            )
+
+        # generation phase
+        else:
+            assert q_len == 1
+            kv_len = kv_cache.num_items() + q_len
+    
+            causal_mask = torch.full(
+                (bs, q_len, kv_len), fill_value=0, dtype=dtype, device=device
+            )
+
+        # Add the head dimension
+        # bs, q_len, KV_len -> bs, num_heads_q, q_len, KV_len
+        causal_mask = causal_mask.unsqueeze(1)
+
+        if kv_cache is not None and kv_cache.num_items() > 0:
+            # The position of the query is just the last position
+            position_ids = attention_mask.cumsum(-1)[:, -1]
+            if position_ids.dim() == 1:
+                position_ids = position_ids.unsqueeze(0)
+        else:
+            # Create a position_ids based on the size of the attention_mask
+            # For masked tokens, use the number 1 as position.
+            position_ids = (attention_mask.cumsum(-1)).masked_fill_((attention_mask == 0), 1).to(device)
+
+        return final_embedding, causal_mask, position_ids
     
     def forward(
             self,
