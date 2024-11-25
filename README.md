@@ -79,3 +79,6 @@ The blue is for the scores on downstream task we get from following the proposed
 
 - What's the point of `PaliGemmaMultiModalProjector`?
   - The goal is to have the same embedding dim for the images and text (for future cat), so as to enable the attention mech to work.
+- Why does one use `padding_idx` in  `nn.embedding`:
+  - This makes the values be init to 0
+  - This disallows the contribution to the gradients (not updated)
