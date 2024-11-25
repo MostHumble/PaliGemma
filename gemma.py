@@ -77,9 +77,47 @@ class PaliGemmaMultiModalProjector(nn.Module):
         self.linear = nn.Linear(config.vision_config.hidden_size, config.vision_config.projection_dim, bias=True)
 
     def forward(self, image_features):
-        # bs, num_patches, embed_dim -> batch_Size, num_patches, projection_dim
+        # bsz, num_patches, embed_dim -> batch_Size, num_patches, projection_dim
         hidden_states = self.linear(image_features)
         return hidden_states
+    
+
+class GemmaForCausalLM(nn.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.model = GemmaModel(config)
+        self.vocab_size = config.vocab_size
+        # This will be used for the sampling
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+
+    def get_input_embeddings(self):
+        return self.model.embed_tokens
+    
+    def tie_weights(self):
+        self.lm_head.weight = self.model.embed_tokens.weight
+
+    def forward(
+        self,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        kv_cache: Optional[KVCache] = None,
+    ) -> Tuple:
+
+        # bsz, seq_len, hidden_dim
+        outputs = self.model(
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            kv_cache=kv_cache,
+        )
+
+        # bsz, seq_len, vocab_sz
+        logits = self.lm_head(outputs).float()
+
+        return {"logits": logits} if kv_cache is not None else {"logits": logits, "kv_cache": kv_cache}
     
 class PaliGemmaForConditonnalGeneration(nn.Module):
     def __init__(self, config: PaliGemmaConfig):
@@ -104,9 +142,9 @@ class PaliGemmaForConditonnalGeneration(nn.Module):
         kv_cache: Optional[KVCache] = None
     ):
         embed_dim = image_features.size(-1)
-        bs, seq_len = input_ids.shape
+        bsz, seq_len = input_ids.shape
         dtype, device = input_embeds.dtype, input_embeds.device
-        # bs, seq_len, hidden_dim
+        # bsz, seq_len, hidden_dim
         scaled_image_features = image_features / (self.config.hidden_size**0.5)
 
         # placeholder for the embeddings
@@ -121,7 +159,7 @@ class PaliGemmaForConditonnalGeneration(nn.Module):
         # prefill phase
         if kv_cache is None or kv_cache.num_items() == 0:
             causal_mask = torch.full(
-                (bs, q_len, q_len), fill_value=0, dtype=dtype, device=device
+                (bsz, q_len, q_len), fill_value=0, dtype=dtype, device=device
             )
 
         # generation phase
@@ -130,11 +168,11 @@ class PaliGemmaForConditonnalGeneration(nn.Module):
             kv_len = kv_cache.num_items() + q_len
     
             causal_mask = torch.full(
-                (bs, q_len, kv_len), fill_value=0, dtype=dtype, device=device
+                (bsz, q_len, kv_len), fill_value=0, dtype=dtype, device=device
             )
 
         # Add the head dimension
-        # bs, q_len, KV_len -> bs, num_heads_q, q_len, KV_len
+        # bsz, q_len, KV_len -> bsz, num_heads_q, q_len, KV_len
         causal_mask = causal_mask.unsqueeze(1)
 
         if kv_cache is not None and kv_cache.num_items() > 0:
@@ -158,13 +196,13 @@ class PaliGemmaForConditonnalGeneration(nn.Module):
 
     ) -> tuple :  
         
-        # bs, seq_len (num_patches+prompt seq lenght + 2 (bos, \n)), hidden_dim
+        # bsz, seq_len (num_patches+prompt seq lenght + 2 (bos, \n)), hidden_dim
         input_embeds = self.language_model.get_input_embeddings()(input_ids)
 
-        # bs, c, h, w -> bs, num_patches, vision_embed_dim
+        # bsz, c, h, w -> bsz, num_patches, vision_embed_dim
         image_embeds = self.vision_encoder(pixel_values.to(input_embeds.dtype))
 
-        # bs, seq_len, vision_embed_dim - > bs, seq, hidden_dim
+        # bsz, seq_len, vision_embed_dim - > bsz, seq, hidden_dim
         image_embeds = self.linear(image_embeds)
 
         # merge the image embeds and text embeds
