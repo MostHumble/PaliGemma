@@ -76,3 +76,6 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
 ![alt text](image.png)
 
 The blue is for the scores on downstream task we get from following the proposed approache, other are experiments with ARegressivness on different levels
+
+- What's the point of `PaliGemmaMultiModalProjector`?
+  - The goal is to have the same embedding dim for the images and text (for future cat), so as to enable the attention mech to work.
