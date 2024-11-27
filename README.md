@@ -85,3 +85,9 @@ The blue is for the scores on downstream task we get from following the proposed
 - Why does one use `padding_idx` in  `nn.embedding`:
   - This makes the values be init to 0
   - This disallows the contribution to the gradients (not updated)
+- Why was RMSnorm introduced?
+  - It made the hypothesis that models don't need mean 0 inputs, and that actually the important element is them having close to 1 variance.
+  - *And* It also needs one less metric to compute (mean)
+- What's the point of this in RMSnorm `output = output * (1.0 + self.weight.float())`?
+  - THe scaling start as vanilla RMSnorm (as weights are init to 0), then it learns to deviate from this during training.
+  
