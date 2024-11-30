@@ -90,4 +90,6 @@ The blue is for the scores on downstream task we get from following the proposed
   - *And* It also needs one less metric to compute (mean)
 - What's the point of this in RMSnorm `output = output * (1.0 + self.weight.float())`?
   - THe scaling start as vanilla RMSnorm (as weights are init to 0), then it learns to deviate from this during training.
+- Explain the point of this `self.down_proj(nn.functional.gelu(self.gate_proj(x), approximate="tanh") * self.up_proj(x))`
+  - A gating mechansim: Where a projection to a higher dim is done, at that level a selection happens with the element wise matrix muliplication, and then back to the original dim.
   
