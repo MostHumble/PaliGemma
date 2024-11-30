@@ -1,4 +1,4 @@
-from typing import Any, List, Union, Optional
+from typing import Any, List, Union, Optional, Tuple
 import numpy as np
 from PIL import Image
 import torch
@@ -96,6 +96,95 @@ class GemmaRMSNorm(nn.Module):
         # See https://github.com/huggingface/transformers/pull/29402
         output = output * (1.0 + self.weight.float())
         return output.type_as(x)
+
+class GemmaDecoderBlock(nn.Module):
+
+    def __init__(self, config: GemmaConfig, layer_idx: int):
+        super().__init__()
+        self.hidden_size = config.hidden_size
+
+        self.self_attn = GemmaAttention(config=config, layer_idx=layer_idx)
+
+        self.layernom = GemmaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        kv_cache: Optional[KVCache] = None,
+    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+
+        # [Batch_Size, Seq_Len, Hidden_Size]
+        hidden_states = self.input_layernorm(hidden_states)
+
+        # [Batch_Size, Seq_Len, Hidden_Size]
+        hidden_states, _, = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            kv_cache=kv_cache,
+        )
+
+        return hidden_states
+
+class GemmaMLP(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+        self.gate_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
+
+    def forward(self, x):
+        return self.down_proj(nn.functional.gelu(self.gate_proj(x), approximate="tanh") * self.up_proj(x))
+
+class GemmaProjectionHead(nn.Module):
+
+    def __init__(self, config: GemmaConfig):
+        super().__init__()
+
+        self.mlp = GemmaMLP(config)
+        
+        self.post_attention_layernorm = GemmaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        
+    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        # bsz, seq_len, hidden_dim
+        hidden_states = self.mlp(hidden_states)
+
+        return hidden_states
+        
+class GemmaDecoderLayer(nn.Module):
+
+    def __init__(self, config: GemmaConfig, layer_idx: int):
+        super().__init__()
+        self.hidden_size = config.hidden_size
+
+        self.decoder_block = GemmaDecoderBlock(config=config, layer_idx=layer_idx)
+        self.projection_head = GemmaProjectionHead(config=config)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        kv_cache: Optional[KVCache] = None,
+    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+        
+        # bsz, seq_len, hidden_dim
+        hidden_states = self.decoder_block(hidden_states) + hidden_states
+        # bsz, seq_len, hidden_dim
+        hidden_states = self.projection_head(hidden_states) + hidden_states
+
+        return hidden_states
     
 class GemmaModel(nn.Module):
 
