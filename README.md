@@ -95,4 +95,4 @@ The blue is for the scores on downstream task we get from following the proposed
 - Why was multiquery attention (MQA) proposed?
   - The essence is about reducing data transfer, if we have have only 1 keys (extreme case) we can manage to transfer it to high speed memory (SRAM) once and keep it there, we can then re-use it num queries times. The same idea goes for having 1 value matrix. 
   - If take this idea and instead use a group of (K,V), and use the same strategy to use redundancy as much as possible we get Grouped Query attention (GQA)!
-  
+  ![alt text](image-1.png)

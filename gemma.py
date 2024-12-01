@@ -4,6 +4,7 @@ from PIL import Image
 import torch
 import torch.nn as nn
 from siglip import  SiglipVisionConfig, SiglipVisionModel
+import math
 
 class GemmaConfig():
 
@@ -94,8 +95,38 @@ class GemmaRMSNorm(nn.Module):
         output = self._norm(x.float())
         # Llama does x.to(float16) * w whilst Gemma is (x * w).to(float16)
         # See https://github.com/huggingface/transformers/pull/29402
+        # Should pay attention to the way precision is handled, some params are more sensible than others.
         output = output * (1.0 + self.weight.float())
         return output.type_as(x)
+    
+class KVCache:
+
+    def __init__(self) -> None:
+        self.key_cache: List[torch.Tensor] = []
+        self.value_cache: List[torch.Tensor] = []
+
+    def num_items(self) -> int:
+        # Safely check if key_cache is not empty and get the sequence length
+        return self.key_cache[0].shape[-2] if self.key_cache else 0
+    
+    def update(
+        self,
+        key_states: torch.Tensor,
+        value_states: torch.Tensor,
+        layer_idx: int,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if len(self.key_cache) <= layer_idx:
+            # This will be filled during the first forward pass (I think?)
+            self.key_cache.append(key_states)
+            self.value_cache.append(value_states)
+        else:
+            # concat along seq_len
+            self.key_cache[layer_idx] = torch.cat([self.key_cache[layer_idx], key_states], dim=-2)
+            self.value_cache[layer_idx] = torch.cat([self.value_cache[layer_idx], value_states], dim=-2)
+
+        # return everything for that specific layer
+        return self.key_cache[layer_idx], self.value_cache[layer_idx]
+
 
 class GemmaAttention(nn.Module):
 
@@ -134,18 +165,17 @@ class GemmaAttention(nn.Module):
         kv_cache: Optional[KVCache] = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
-        bsz, q_len, _ = hidden_states.size() # [Batch_Size, Seq_Len, Hidden_Size]
-        # [Batch_Size, Seq_Len, Num_Heads_Q * Head_Dim]
+        # bsz, seq_len, hidden_dim 
+        bsz, q_len, _ = hidden_states.size() 
+        # bsz, seq_len, (nh_q * hidden_dim)
         query_states = self.q_proj(hidden_states)
-        # [Batch_Size, Seq_Len, Num_Heads_KV * Head_Dim]
+        # bsz, seq_len, (nh_kv * head_dim)
         key_states = self.k_proj(hidden_states)
-        # [Batch_Size, Seq_Len, Num_Heads_KV * Head_Dim]
         value_states = self.v_proj(hidden_states)
-        # [Batch_Size, Num_Heads_Q, Seq_Len, Head_Dim]
+        # bsz, nh_q, seq_len, head_dim
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        # [Batch_Size, Num_Heads_KV, Seq_Len, Head_Dim]
+        # bsz, nh_kv, seq_len, head_dim
         key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        # [Batch_Size, Num_Heads_KV, Seq_Len, Head_Dim]
         value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
 
         # [Batch_Size, Seq_Len, Head_Dim], [Batch_Size, Seq_Len, Head_Dim]
@@ -160,7 +190,7 @@ class GemmaAttention(nn.Module):
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
         # Perform the calculation as usual, Q * K^T / sqrt(head_dim). Shape: [Batch_Size, Num_Heads_Q, Seq_Len_Q, Seq_Len_KV]
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(query_states, key_states.transpose(-2, -1)) * math.sqrt(self.head_dim)**-1 # bit precise 
 
         assert attention_mask is not None
         attn_weights = attn_weights + attention_mask
@@ -180,7 +210,7 @@ class GemmaAttention(nn.Module):
             )
         # Make sure the sequence length is the second dimension. # [Batch_Size, Num_Heads_Q, Seq_Len_Q, Head_Dim] -> [Batch_Size, Seq_Len_Q, Num_Heads_Q, Head_Dim]
         attn_output = attn_output.transpose(1, 2).contiguous()
-        # Concatenate all the heads together. [Batch_Size, Seq_Len_Q, Num_Heads_Q, Head_Dim] -> [Batch_Size, Seq_Len_Q, Num_Heads_Q * Head_Dim]
+        # Concatenate all the heads together. [bs, Seq_Len_Q, Num_Heads_Q, Head_Dim] -> [Batch_Size, Seq_Len_Q, Num_Heads_Q * Head_Dim]
         attn_output = attn_output.view(bsz, q_len, -1)
         # Multiply by W_o. [Batch_Size, Seq_Len_Q, Hidden_Size]
         attn_output = self.o_proj(attn_output)
