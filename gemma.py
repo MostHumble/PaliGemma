@@ -115,8 +115,8 @@ class KVCache:
         value_states: torch.Tensor,
         layer_idx: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # This will make sure it's filled during the first forward pass (I think?)
         if len(self.key_cache) <= layer_idx:
-            # This will be filled during the first forward pass (I think?)
             self.key_cache.append(key_states)
             self.value_cache.append(value_states)
         else:
