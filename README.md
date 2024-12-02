@@ -41,9 +41,9 @@ Following along with the one and only Umar Jamil: https://www.youtube.com/watch?
   - A major problem when using ReLu is that when the inputs are smaller than 0, they get flattened out thus losing some of the information (gradient is 0), GeLu smooths that part (some kind of fancy Leaky ReLu)
 - What's the point of using the multihead attention?
   - The idea comes from the fact that word (tokens) can have multiple meanining, we thus want to facilitate having platera by allowing local interaction (ex: Q:[seq_len:4, head:1, head_dim:128] allows only interactactions withing the first 128 dims of each tokens (when multiplied with K.T)).
-  - It's also a great way to parallelize the computations, as each head is indpendent of the others.
+  - It's also a great way to parallelize the computations, as each head is independent of the others.
 - Why do we need to use `.contiguous` after the `transpose`?
-  - Because the memory layout remains the same, but the values in each dim are not contiguous when we apply the transpose, and using `view` requires the layout to be contigous (follow row major style of Pytorch), `.contiguous`  recreates a tensor with a contiguous memory which values follow that of the transpose.
+  - The memory layout remains the same and thus the values in each dim are not contiguous, and using `view` requires the layout to be contigous (follow row major style of Pytorch), `.contiguous`  recreates a tensor with a contiguous memory which values follow that of the transpose.
 - What's the point of Multiplying by W_O after calculating `Concat(Softmax(Q*K.T/sqrt(hidden_dim))*V, dim=-1)`?
   - The goal is to enable the exchange of informations between the heads (some kind of mixing layer).
 
@@ -95,4 +95,5 @@ The blue is for the scores on downstream task we get from following the proposed
 - Why was multiquery attention (MQA) proposed?
   - The essence is about reducing data transfer, if we have have only 1 keys (extreme case) we can manage to transfer it to high speed memory (SRAM) once and keep it there, we can then re-use it num queries times. The same idea goes for having 1 value matrix. 
   - If take this idea and instead use a group of (K,V), and use the same strategy to use redundancy as much as possible we get Grouped Query attention (GQA)!
+  - Bonus thing you get: Reduced KV cache size!
   ![alt text](image-1.png)
