@@ -165,42 +165,41 @@ class GemmaAttention(nn.Module):
         kv_cache: Optional[KVCache] = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
-        # bsz, seq_len, hidden_dim 
+        # bsz, seq_len_q, hidden_dim 
         bsz, q_len, _ = hidden_states.size() 
-        # bsz, seq_len, (nh_q * hidden_dim)
+        # bsz, seq_len_q, (nh_q * hidden_dim)
         query_states = self.q_proj(hidden_states)
-        # bsz, seq_len, (nh_kv * head_dim)
+        # bsz, seq_len_kv, (1 * head_dim)
         key_states = self.k_proj(hidden_states)
         value_states = self.v_proj(hidden_states)
-        # bsz, nh_q, seq_len, head_dim
+        # bsz, nh_q, seq_len_q, head_dim
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        # bsz, nh_kv, seq_len, head_dim
+        # bsz, 1, seq_len_kv, head_dim
         key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
         value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
 
-        # [Batch_Size, Seq_Len, Head_Dim], [Batch_Size, Seq_Len, Head_Dim]
+        # bsz, seq_len_q, head_dim
         cos, sin = self.rotary_emb(value_states, position_ids, seq_len=None)
-        # [Batch_Size, Num_Heads_Q, Seq_Len, Head_Dim], [Batch_Size, Num_Heads_KV, Seq_Len, Head_Dim]
+        # bsz, 1, seq_len_q, head_dim; bsz, 1, seq_len, head_dim
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
         if kv_cache is not None:
             key_states, value_states = kv_cache.update(key_states, value_states, self.layer_idx)
 
-        # Repeat the key and values to match the number of heads of the query
-        key_states = repeat_kv(key_states, self.num_key_value_groups)
-        value_states = repeat_kv(value_states, self.num_key_value_groups)
-        # Perform the calculation as usual, Q * K^T / sqrt(head_dim). Shape: [Batch_Size, Num_Heads_Q, Seq_Len_Q, Seq_Len_KV]
+        # When matmul keys get broadcasted through the 2nd dim to match number of queries:
+        # bsz, 1, seq_len_kv, head_dim -> bsz, nh_q, seq_len_kv, head_dim
+        # bsz, nh_q, seq_len_q, seq_len_kv
         attn_weights = torch.matmul(query_states, key_states.transpose(-2, -1)) * math.sqrt(self.head_dim)**-1 # bit precise 
 
         assert attention_mask is not None
         attn_weights = attn_weights + attention_mask
 
-        # Apply the softmax
-        # [Batch_Size, Num_Heads_Q, Seq_Len_Q, Seq_Len_KV]
+        # bsz, nh_q, seq_len_q, seq_len_kv
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
-        # Apply the dropout
         attn_weights = nn.functional.dropout(attn_weights, p=self.attention_dropout, training=self.training)
-        # Multiply by the values. [Batch_Size, Num_Heads_Q, Seq_Len_Q, Seq_Len_KV] x [Batch_Size, Num_Heads_KV, Seq_Len_KV, Head_Dim] -> [Batch_Size, Num_Heads_Q, Seq_Len_Q, Head_Dim]
+        # Same broadcasting happens with values but this
+        # bsz, 1, seq_len_kv, head_dim -> bsz, nh_q, seq_len_kv, head_dim
+        # bsz, nh_q, seq_len_q, head_dim
         attn_output = torch.matmul(attn_weights, value_states)
 
         if attn_output.size() != (bsz, self.num_heads, q_len, self.head_dim):
@@ -208,11 +207,11 @@ class GemmaAttention(nn.Module):
                 f"`attn_output` should be of size {(bsz, self.num_heads, q_len, self.head_dim)}, but is"
                 f" {attn_output.size()}"
             )
-        # Make sure the sequence length is the second dimension. # [Batch_Size, Num_Heads_Q, Seq_Len_Q, Head_Dim] -> [Batch_Size, Seq_Len_Q, Num_Heads_Q, Head_Dim]
-        attn_output = attn_output.transpose(1, 2).contiguous()
-        # Concatenate all the heads together. [bs, Seq_Len_Q, Num_Heads_Q, Head_Dim] -> [Batch_Size, Seq_Len_Q, Num_Heads_Q * Head_Dim]
+        # bsz, seq_len_q, nh_q, head_dim
+        attn_output = attn_output.transpose(1, 2).contiguous() 
+        # bsz, seq_len_q, nh_q, head_dim -> bsz, seq_len_q, nh_q * head_dim
         attn_output = attn_output.view(bsz, q_len, -1)
-        # Multiply by W_o. [Batch_Size, Seq_Len_Q, Hidden_Size]
+        # bsz, seq_len_q, nh_q * head_dim -> bsz, seq_len_q, hidden_sz
         attn_output = self.o_proj(attn_output)
 
         return attn_output, attn_weights
