@@ -1,6 +1,7 @@
 # PaliGemma
 
-Following along with the one and only Umar Jamil: https://www.youtube.com/watch?v=vAmKB7iPkWw
+Following along with the one and only Umar Jamil: [https://www.youtube.com/watch?v=vAmKB7iPkWw](https://www.youtube.com/watch?v=vAmKB7iPkWw)
+Umar's Github repo : [https://github.com/hkproj/pytorch-paligemma](https://github.com/hkproj/pytorch-paligemma)
 
 ## Notes
 
@@ -97,3 +98,13 @@ The blue is for the scores on downstream task we get from following the proposed
   - If take this idea and instead use a group of (K,V), and use the same strategy to use redundancy as much as possible we get Grouped Query attention (GQA)!
   - Bonus thing you get: Reduced KV cache size!
   ![alt text](image-1.png)
+
+### Rotary positionnal embedding
+
+That part was is just a streight up copy paste from Umar Jamil's repo, with a slight regarding the comment of the equation of theta which should be theta_i = base^(-2i/dim) where i = 0, 1, 2, ..., dim // 2.
+
+The reason is that the implmentation 'does not follow the' the original paper, because it's a port from HuggingFace which made some permutations...Doesn't matter.
+
+The idea of ROPE is pretty streight forward, rotate the embeddings of Q, and K by an angle tetha, the resulting dot product will be  a function of the postition of the tokens in a sequence: Attention scores will be decaying as the relative distance between tokens grow.
+
+I would really recommend reading this [blog](https://fleetwood.dev/posts/you-could-have-designed-SOTA-positional-encoding  ) by an ml engineer at HF, which itself include some pretty neat references
