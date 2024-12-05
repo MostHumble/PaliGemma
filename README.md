@@ -103,7 +103,7 @@ The blue is for the scores on downstream task we get from following the proposed
 
 That part was is just a streight up copy paste from Umar Jamil's repo, with a slight regarding the comment of the equation of theta which should be theta_i = base^(-2i/dim) where i = 0, 1, 2, ..., dim // 2.
 
-The reason is that the implmentation 'does not follow the' the original paper, because it's a port from HuggingFace which made some permutations...Doesn't matter.
+The reason is that the implmentation 'does not follow the' the original paper, because it's a port from HuggingFace, which itself is a port to be able to use weights of released pretrained models, and somewhere in the way they had to make some permutations of the dims...Doesn't matter.
 
 The idea of ROPE is pretty streight forward, rotate the embeddings of Q, and K by an angle tetha, the resulting dot product will be  a function of the postition of the tokens in a sequence: Attention scores will be decaying as the relative distance between tokens grow.
 
